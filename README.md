@@ -111,6 +111,30 @@ JSONCompareMode.STRICT.withStrictOrdering(false);  // -> NON_EXTENSIBLE
 JSONCompareMode.LENIENT.withExtensible(false);     // -> NON_EXTENSIBLE
 ```
 
+### Order differences in the result
+
+When arrays match with loose ordering (`LENIENT` / `NON_EXTENSIBLE`), the comparison passes even if elements are in a different order — but the reordering is now **visible in the result**:
+
+```java
+JSONCompareResult result = JSONCompare.compareJSON(
+    "{\"a\": [{\"id\": 1}, {\"id\": 2}]}",
+    "{\"a\": [{\"id\": 2}, {\"id\": 1}]}",
+    JSONCompareMode.LENIENT);
+
+result.passed();                    // true — reordering is not a failure
+result.isReorderedOnField();        // true
+result.getFieldReordered();         // [a[0]: expected 0, found 1], [a[1]: expected 1, found 0]
+result.getMessage();
+// "2 element(s) matched in different order
+//  a[0]: expected at index 0, found at index 1
+//  a[1]: expected at index 1, found at index 0"
+```
+
+Notes:
+- Reorder entries never affect `passed()`/`failed()`; use `STRICT` or `STRICT_ORDER` if order must fail the comparison.
+- If the result also has failures, `getMessage()` stays clean by default and reorder details are available via `getFieldReordered()`; pass `getMessage(true)` to append the summary.
+- Works for both object arrays (Hungarian pairing) and simple-value arrays.
+
 ## Getting detailed results
 
 Use `JSONCompare` directly to get a `JSONCompareResult` instead of throwing an assertion error:

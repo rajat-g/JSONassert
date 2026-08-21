@@ -33,6 +33,7 @@ public class JSONCompareResult {
     private final List<FieldComparisonFailure> _fieldFailures = new ArrayList<FieldComparisonFailure>();
     private final List<FieldComparisonFailure> _fieldMissing = new ArrayList<FieldComparisonFailure>();
     private final List<FieldComparisonFailure> _fieldUnexpected = new ArrayList<FieldComparisonFailure>();
+    private final List<FieldComparisonFailure> _fieldReordered = new ArrayList<FieldComparisonFailure>();
 
     /**
      * Default constructor.
@@ -63,11 +64,35 @@ public class JSONCompareResult {
     }
 
     /**
-     * Result message
+     * Result message. When the comparison otherwise passed but array elements
+     * were matched out of order, a reordering summary is appended.
      * @return String explaining why if the comparison failed
      */
     public String getMessage() {
-        return _message.toString();
+        return getMessage(false);
+    }
+
+    /**
+     * Result message, optionally including the reordering summary even when
+     * the comparison also has failures.
+     * @param includeReorderSummaryWhenFailed also append reorder info on failure
+     * @return String explaining why if the comparison failed
+     */
+    public String getMessage(boolean includeReorderSummaryWhenFailed) {
+        StringBuilder sb = new StringBuilder(_message);
+        boolean appendReorder = !_fieldReordered.isEmpty() && (_success || includeReorderSummaryWhenFailed);
+        if (appendReorder) {
+            if (sb.length() > 0) {
+                sb.append(" ; ");
+            }
+            sb.append(_fieldReordered.size()).append(" element(s) matched in different order");
+            for (FieldComparisonFailure r : _fieldReordered) {
+                sb.append("\n").append(r.getField())
+                  .append(": expected at index ").append(r.getExpected())
+                  .append(", found at index ").append(r.getActual()).append("\n");
+            }
+        }
+        return sb.toString();
     }
 
     /**
@@ -163,6 +188,37 @@ public class JSONCompareResult {
         } else {
             _message.append(" ; ").append(message);
         }
+    }
+
+    /**
+     * Get the list of fields whose values matched but were found at a
+     * different position than expected (only populated for unordered array
+     * comparison).
+     * @return list of reordering notices
+     */
+    public List<FieldComparisonFailure> getFieldReordered() {
+        return Collections.unmodifiableList(_fieldReordered);
+    }
+
+    /**
+     * Check whether any array elements matched in a different order than expected.
+     * @return true if at least one element was found at a different index
+     */
+    public boolean isReorderedOnField() {
+        return !_fieldReordered.isEmpty();
+    }
+
+    /**
+     * Record that the value at {@code field} matched, but was found at a
+     * different position than expected. Does not affect {@link #failed()}.
+     * @param field the compared field/path
+     * @param expectedIndex the index the element was expected at
+     * @param actualIndex the index the element was found at
+     * @return result of comparison
+     */
+    public JSONCompareResult reordered(String field, Object expectedIndex, Object actualIndex) {
+        _fieldReordered.add(new FieldComparisonFailure(field, expectedIndex, actualIndex));
+        return this;
     }
 
     /**

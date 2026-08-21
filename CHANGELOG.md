@@ -3,6 +3,15 @@
 All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- Order-difference reporting: when unordered arrays match with elements in a different
+  position than expected, `JSONCompareResult` now records each reordering. Inspect via
+  `isReorderedOnField()`, `getFieldReordered()`, and a summary appended to `getMessage()`
+  for otherwise-passing comparisons (`getMessage(true)` to always include it). Reorder
+  entries never affect pass/fail.
+
 ## [0.1.0] - 2026-08-22
 
 ### Added

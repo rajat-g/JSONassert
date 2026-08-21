@@ -133,17 +133,49 @@ public abstract class AbstractComparator implements JSONComparator {
     protected void compareJSONArrayOfSimpleValues(String key, JSONArray expected, JSONArray actual, JSONCompareResult result) {
         Map<Object, Integer> expectedCount = JSONCompareUtil.getCardinalityMap(jsonArrayToList(expected));
         Map<Object, Integer> actualCount = JSONCompareUtil.getCardinalityMap(jsonArrayToList(actual));
+        boolean valueMismatch = false;
         for (Object o : expectedCount.keySet()) {
             if (!actualCount.containsKey(o)) {
                 result.missing(key + "[]", o);
+                valueMismatch = true;
             } else if (!actualCount.get(o).equals(expectedCount.get(o))) {
                 result.fail(key + "[]: Expected " + expectedCount.get(o) + " occurrence(s) of " + o
                         + " but got " + actualCount.get(o) + " occurrence(s)");
+                valueMismatch = true;
             }
         }
         for (Object o : actualCount.keySet()) {
             if (!expectedCount.containsKey(o)) {
                 result.unexpected(key + "[]", o);
+                valueMismatch = true;
+            }
+        }
+        if (!valueMismatch) {
+            detectSimpleValueReorder(key, expected, actual, result);
+        }
+    }
+
+    /**
+     * After cardinality checks pass, records which simple values were found
+     * at different positions than expected so the reordering is visible in
+     * the result.
+     */
+    private void detectSimpleValueReorder(String key, JSONArray expected, JSONArray actual, JSONCompareResult result) {
+        Set<Integer> matched = new HashSet<Integer>();
+        for (int i = 0; i < expected.length(); ++i) {
+            Object expectedElement = JSONCompareUtil.getObjectOrNull(expected, i);
+            int foundAt = -1;
+            for (int j = 0; j < actual.length(); ++j) {
+                if (!matched.contains(j) && Objects.equals(expectedElement, JSONCompareUtil.getObjectOrNull(actual, j))) {
+                    foundAt = j;
+                    break;
+                }
+            }
+            if (foundAt >= 0) {
+                matched.add(foundAt);
+                if (foundAt != i) {
+                    result.reordered(key + "[" + i + "]", i, foundAt);
+                }
             }
         }
     }
@@ -189,6 +221,9 @@ public abstract class AbstractComparator implements JSONComparator {
             int j = assignment[i];
             if (j >= 0 && !usedActual[j] && similarity[i][j] >= MATCH_THRESHOLD) {
                 usedActual[j] = true;
+                if (i != j) {
+                    result.reordered(key + "[" + i + "]", i, j);
+                }
                 compareValues(key + "[" + i + "]",
                         JSONCompareUtil.getObjectOrNull(expected, i),
                         JSONCompareUtil.getObjectOrNull(actual, j), result);
