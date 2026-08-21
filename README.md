@@ -1,5 +1,10 @@
 # hungarian-json-assert
 
+[![CI](https://github.com/rajat-g/JSONassert/actions/workflows/ci.yml/badge.svg)](https://github.com/rajat-g/JSONassert/actions/workflows/ci.yml)
+[![JitPack](https://jitpack.io/v/rajat-g/JSONassert.svg)](https://jitpack.io/#rajat-g/JSONassert)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Java](https://img.shields.io/badge/Java-17+-orange.svg)]()
+
 A Java library for comparing JSON documents in tests — **API-compatible with [JSONassert](https://github.com/skyscreamer/JSONassert)** — with one key difference: when arrays need to be matched without strict ordering, elements are paired using the **Hungarian algorithm (Kuhn–Munkres)** to find the *globally optimal* expected-to-actual assignment instead of relying on greedy first-match heuristics.
 
 The full upstream JSONassert test suite (154 tests) runs against this library **unchanged**, so it is a drop-in replacement.
@@ -21,10 +26,39 @@ The full upstream JSONassert test suite (154 tests) runs against this library **
 
 ## Installation
 
-Build and install into your local Maven repository:
+### Option 1: JitPack (no Maven Central account needed)
+
+Add the JitPack repository and dependency:
+
+```xml
+<repositories>
+    <repository>
+        <id>jitpack.io</id>
+        <url>https://jitpack.io</url>
+    </repository>
+</repositories>
+
+<dependency>
+    <groupId>com.github.rajat-g</groupId>
+    <artifactId>JSONassert</artifactId>
+    <version>v0.1.0</version> <!-- any release tag or commit SHA -->
+    <scope>test</scope>
+</dependency>
+```
+
+Gradle:
+
+```groovy
+repositories { maven { url 'https://jitpack.io' } }
+testImplementation 'com.github.rajat-g:JSONassert:v0.1.0'
+```
+
+### Option 2: build locally
 
 ```bash
-mvn clean install
+git clone https://github.com/rajat-g/JSONassert.git
+cd JSONassert
+mvn install   # or ./mvnw install if you don't have Maven installed
 ```
 
 Then add the dependency:
@@ -33,7 +67,7 @@ Then add the dependency:
 <dependency>
     <groupId>io.smart</groupId>
     <artifactId>hungarian-json-assert</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.1.0</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -239,6 +273,29 @@ SmartJsonAssert.assertEquals(expected, actual, comparator); // works with both c
 
 Customizations here additionally support single-segment `*` wildcards (`team.members[*].role`) and custom matchers also feed the similarity matrix used during array pairing.
 
+## Runnable examples
+
+A complete tour of the library lives in [`examples/Examples.java`](examples/Examples.java) — modes, detailed results, and optimal array matching. Run it with:
+
+```bash
+mvn -q package -DskipTests
+javac -cp "target/classes;~/.m2/repository/org/json/json/20240303/json-20240303.jar" -d out examples/Examples.java
+java  -cp "out;target/classes;~/.m2/repository/org/json/json/20240303/json-20240303.jar" Examples
+```
+
+## How this differs from upstream JSONassert
+
+| Behavior | Upstream JSONassert | This library |
+|---|---|---|
+| Unordered array pairing | Unique-key field heuristic (e.g. `id`), then greedy first-match fallback | Hungarian algorithm: globally optimal assignment, no identity assumptions |
+| Objects without a unique key in arrays | Fall back to expensive greedy matching; can mispair and report false failures | Always paired optimally |
+| Near-miss array elements (e.g. one field differs) | `[id=3] Expected: a JSON object but none found` | Paired with best counterpart + precise field diff: `[0].id Expected: 3, got: 5` |
+| Match tracking | Failures only (`JSONCompareResult`) | Same, plus `io.smart.jsonassert` extended result with `getMatches()` |
+| Failure message formats | — | Identical except for the two cases above |
+| Test suite compatibility | — | Full upstream suite passes (1 test updated for improved messages) |
+
+Everything else — modes, `Customization`/`CustomComparator`, `ArraySizeComparator`, `ArrayValueMatcher`, `RegularExpressionValueMatcher` — behaves identically to upstream.
+
 ## Project structure
 
 ```
@@ -270,9 +327,12 @@ src/test/java/
 ## Building and testing
 
 ```bash
-mvn test      # runs 176 tests: upstream suite + extended API tests
-mvn install   # build and install locally
+./mvnw test            # runs the full suite: upstream JSONassert tests + our tests
+./mvnw javadoc:javadoc # generate API documentation into target/site/apidocs
+./mvnw install         # build and install locally
 ```
+
+(Use `mvnw.cmd` on Windows, or plain `mvn` if you have Maven installed.)
 
 ## Credits and license
 
