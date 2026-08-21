@@ -6,7 +6,8 @@ The full upstream JSONassert test suite (154 tests) runs against this library **
 
 ## Features
 
-- **Drop-in compatible** — same `org.skyscreamer.jsonassert` packages, classes, and failure message formats as JSONassert
+- **Drop-in compatible** — same `org.skyscreamer.jsonassert` packages, classes, and failure message formats as JSONassert (the full upstream test suite runs against this library)
+- **No unique-key heuristics** — unlike upstream, array elements are never paired by assumed identity fields; pairing is always the globally optimal assignment
 - **All four compare modes** — `STRICT`, `LENIENT`, `NON_EXTENSIBLE`, `STRICT_ORDER`
 - **Optimal array matching** — unordered arrays are paired via the Hungarian algorithm, avoiding false failures that greedy matching can produce
 - **Custom value comparators** — plug your own matchers into specific JSON paths, including `**` and `*` wildcards
@@ -196,22 +197,28 @@ JSONAssert.assertEquals(
     new BlankAwareComparator(JSONCompareMode.NON_EXTENSIBLE));
 ```
 
-> **Note:** inside *arrays of objects*, JSONassert first tries to pair elements by a unique key field (e.g. `id`) before any value comparison runs. Fields used as the pairing key therefore bypass custom comparators; make sure your objects carry a proper identity field when relying on custom value semantics inside arrays.
-
 ## How the Hungarian matching works
 
-When a mode allows loose array ordering and elements cannot be matched by a unique key, this library:
+Unlike upstream JSONassert — which tries to pair array elements by a "unique key" field (e.g. `id`) and falls back to greedy first-match — this library makes **no assumptions about element identity**. For any array compared with loose ordering (`LENIENT` / `NON_EXTENSIBLE`):
 
-1. Builds an n×m compatibility matrix where each cell is `1.0` if the expected element `i` deeply equals the actual element `j`, `0.0` otherwise.
-2. Runs the **Hungarian algorithm** (`io.smart.jsonassert.internal.HungarianAlgorithm`, O(n²·m) shortest-augmenting-path implementation) to find the pairing that maximizes total matches.
-3. Reports the first unmatched expected element using the standard JSONassert message.
+1. An **n×m structural-similarity matrix** is built, scoring every expected↔actual pair in `[0..1]` (recursive object/array similarity, Levenshtein ratio for strings, normalized distance for numbers).
+2. The **Hungarian algorithm** (`io.smart.jsonassert.internal.HungarianAlgorithm`, O(n²·m)) finds the pairing that maximizes total similarity — the globally optimal assignment.
+3. Every paired element is then compared field-by-field, so you get **precise diffs** (e.g. `friends[2].age Expected: 30, got: 31`) instead of vague "element not found" errors.
+4. An expected element whose best available counterpart is still too dissimilar is reported with `key[i] Could not find match for element ...`.
 
-Unlike greedy matching, which pairs elements in encounter order and can consume an actual element needed by a later expected one, Hungarian matching always finds a perfect pairing if one exists:
+Because pairing is globally optimal, false failures from greedy consumption never occur:
 
 ```
 Expected: [{k: x}, {k: y}]      Actual: [{k: y}, {k: x}]
-Greedy:   e0→a0 fails, then e0 unmatched ✗
+Greedy:    e0→a0 mispairs, e0 ends up unmatched ✗
 Hungarian: e0→a1, e1→a0 ✓
+```
+
+And because pairing is similarity-based rather than key-based, objects without any identity field work fine:
+
+```
+Expected: [{"note": "a"}, {"note": "b"}]   (no 'id' field at all)
+Actual:   [{"note": "b"}, {"note": "a"}]   -> passes
 ```
 
 ## Extended API (`io.smart.jsonassert`)

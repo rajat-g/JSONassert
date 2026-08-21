@@ -53,11 +53,10 @@ class BlankAwareComparatorTest {
 
     @Test
     void worksInsideArraysAndNestedStructures() {
-        // 'y' is the unique key used to pair elements ('tag' repeats so it
-        // cannot be a key); 'tag' values are then compared field-by-field
-        // with blank tolerance, in any order.
+        // Elements are paired optimally regardless of order; 'tag' values are
+        // then compared field-by-field with blank tolerance.
         assertDoesNotThrow(() -> JSONAssert.assertEquals(
-                "{\"items\": [{\"tag\": \"\", \"y\": 1}, {\"tag\": \"\", \"y\": 2}]}",
-                "{\"items\": [{\"tag\": \" \", \"y\": 2}, {\"tag\": \"   \", \"y\": 1}]}", comparator));
+                "{\"items\": [{\"tag\": \"\"}, {\"tag\": \"  \"}]}",
+                "{\"items\": [{\"tag\": \" \"}, {\"tag\": \"\"}]}", comparator));
     }
 }

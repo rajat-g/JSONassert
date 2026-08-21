@@ -82,10 +82,9 @@ public class DefaultComparator extends AbstractComparator {
             compareJSONArrayWithStrictOrder(prefix, expected, actual, result);
         } else if (allSimpleValues(expected)) {
             compareJSONArrayOfSimpleValues(prefix, expected, actual, result);
-        } else if (allJSONObjects(expected)) {
-            compareJSONArrayOfJsonObjects(prefix, expected, actual, result);
         } else {
-            // An expensive last resort
+            // Optimal pairing via the Hungarian algorithm - no unique-key
+            // heuristics; every element is paired with its best counterpart.
             recursivelyCompareJSONArray(prefix, expected, actual, result);
         }
     }

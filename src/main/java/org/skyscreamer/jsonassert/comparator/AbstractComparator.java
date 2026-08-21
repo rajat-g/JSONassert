@@ -18,6 +18,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.skyscreamer.jsonassert.JSONCompareResult;
 import io.smart.jsonassert.internal.HungarianAlgorithm;
+import io.smart.jsonassert.internal.SimilarityScorer;
 
 import java.util.*;
 
@@ -30,6 +31,12 @@ import static org.skyscreamer.jsonassert.comparator.JSONCompareUtil.*;
  *
  */
 public abstract class AbstractComparator implements JSONComparator {
+
+    /**
+     * Minimum structural similarity for two array elements to be considered
+     * a pairing candidate by the Hungarian matcher.
+     */
+    protected static final double MATCH_THRESHOLD = 0.5;
 
     /**
      * Default constructor
@@ -151,53 +158,46 @@ public abstract class AbstractComparator implements JSONComparator {
 
     /**
      * Matches array elements with loose ordering using the Hungarian algorithm
-     * (Kuhn-Munkres) over a bipartite compatibility matrix, so the globally
-     * optimal expected-to-actual pairing is found instead of relying on greedy
-     * first-match heuristics. A pair is compatible when both elements are of
-     * the same type and compare as equal under this comparator's rules.
+     * (Kuhn-Munkres) over a structural-similarity matrix, so the globally
+     * optimal expected-to-actual pairing is found without any assumptions
+     * about unique keys or element identity.
+     *
+     * <p>Paired elements are then compared field-by-field so detailed
+     * differences are recorded. An expected element whose best available
+     * counterpart is too dissimilar is reported with a standard
+     * "Could not find match" failure.</p>
      */
     protected void recursivelyCompareJSONArray(String key, JSONArray expected, JSONArray actual,
                                                JSONCompareResult result) {
         int n = expected.length();
         int m = actual.length();
+        SimilarityScorer scorer = new SimilarityScorer();
         double[][] similarity = new double[n][m];
         for (int i = 0; i < n; i++) {
             Object expectedElement = JSONCompareUtil.getObjectOrNull(expected, i);
             for (int j = 0; j < m; j++) {
-                similarity[i][j] = isCompatibleMatch(expectedElement, JSONCompareUtil.getObjectOrNull(actual, j)) ? 1.0 : 0.0;
+                similarity[i][j] = scorer.similarity(
+                        expectedElement, JSONCompareUtil.getObjectOrNull(actual, j), key + "[" + i + "]");
             }
         }
 
         HungarianAlgorithm hungarian = new HungarianAlgorithm(negate(similarity));
         int[] assignment = hungarian.getResult();
 
+        boolean[] usedActual = new boolean[m];
         for (int i = 0; i < n; i++) {
             int j = assignment[i];
-            boolean matchFound = j >= 0 && similarity[i][j] > 0.5;
-            if (!matchFound) {
+            if (j >= 0 && !usedActual[j] && similarity[i][j] >= MATCH_THRESHOLD) {
+                usedActual[j] = true;
+                compareValues(key + "[" + i + "]",
+                        JSONCompareUtil.getObjectOrNull(expected, i),
+                        JSONCompareUtil.getObjectOrNull(actual, j), result);
+            } else {
                 result.fail(key + "[" + i + "] Could not find match for element "
                         + JSONCompareUtil.getObjectOrNull(expected, i));
                 return;
             }
         }
-    }
-
-    private boolean isCompatibleMatch(Object expectedElement, Object actualElement) {
-        if (expectedElement == actualElement) {
-            return true;
-        }
-        if (expectedElement == null || actualElement == null) {
-            return false;
-        }
-        if (!actualElement.getClass().equals(expectedElement.getClass())) {
-            return false;
-        }
-        if (expectedElement instanceof JSONObject) {
-            return compareJSON((JSONObject) expectedElement, (JSONObject) actualElement).passed();
-        } else if (expectedElement instanceof JSONArray) {
-            return compareJSON((JSONArray) expectedElement, (JSONArray) actualElement).passed();
-        }
-        return expectedElement.equals(actualElement);
     }
 
     private static double[][] negate(double[][] matrix) {
