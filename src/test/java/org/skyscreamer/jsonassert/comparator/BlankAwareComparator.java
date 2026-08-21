@@ -4,7 +4,9 @@ import org.skyscreamer.jsonassert.JSONCompareMode;
 import org.skyscreamer.jsonassert.JSONCompareResult;
 
 /**
- * A {@link DefaultComparator} variant with blank-tolerant string semantics.
+ * Test-only example: a {@link DefaultComparator} variant with blank-tolerant
+ * string semantics. Lives in the test sources to demonstrate how to write
+ * your own comparator; it is not part of the shipped library jar.
  *
  * <p>When both expected and actual values are {@link String}s and both are
  * empty/blank after trimming (e.g. {@code ""} vs {@code "   "}), they are

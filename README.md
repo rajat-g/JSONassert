@@ -162,6 +162,42 @@ JSONAssert.assertEquals("{a:[{type:row}]}", json,
         new Customization("a", new ArrayValueMatcher<>(comparator))));
 ```
 
+### Writing your own comparator
+
+For full control, extend `DefaultComparator` and override `compareValues`. The example below (available as a test-only class in `src/test/java/.../BlankAwareComparator.java`) treats two strings that are both blank after trimming (`""` vs `"   "`) as equal, while everything else follows the default rules:
+
+```java
+import org.skyscreamer.jsonassert.JSONCompareMode;
+import org.skyscreamer.jsonassert.JSONCompareResult;
+import org.skyscreamer.jsonassert.comparator.DefaultComparator;
+
+public class BlankAwareComparator extends DefaultComparator {
+
+    public BlankAwareComparator(JSONCompareMode mode) {
+        super(mode);
+    }
+
+    @Override
+    public void compareValues(String prefix, Object expectedValue, Object actualValue,
+                              JSONCompareResult result) {
+        if (expectedValue instanceof String && actualValue instanceof String
+                && ((String) expectedValue).trim().isEmpty()
+                && ((String) actualValue).trim().isEmpty()) {
+            return; // both blank -> match
+        }
+        // non-blank strings and all non-string values: compare as usual
+        super.compareValues(prefix, expectedValue, actualValue, result);
+    }
+}
+
+// Usage:
+JSONAssert.assertEquals(
+    "{\"note\": \"\"}", "{\"note\": \"   \"}",
+    new BlankAwareComparator(JSONCompareMode.NON_EXTENSIBLE));
+```
+
+> **Note:** inside *arrays of objects*, JSONassert first tries to pair elements by a unique key field (e.g. `id`) before any value comparison runs. Fields used as the pairing key therefore bypass custom comparators; make sure your objects carry a proper identity field when relying on custom value semantics inside arrays.
+
 ## How the Hungarian matching works
 
 When a mode allows loose array ordering and elements cannot be matched by a unique key, this library:
