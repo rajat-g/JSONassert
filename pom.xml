@@ -6,7 +6,7 @@
 
     <groupId>io.smart</groupId>
     <artifactId>hungarian-json-assert</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.2</version>
     <packaging>jar</packaging>
 
     <name>hungarian-json-assert</name>

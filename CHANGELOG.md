@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-13
+
+### Added
+- Path-specific detailed comparators that return field-level differences, allowing a selected array
+  to use unordered matching while other arrays follow the outer comparison mode.
+- A regression test covering detailed comparison of one unordered array within strict comparison.
+
 ### Added
 - Order-difference reporting: when unordered arrays match with elements in a different
   position than expected, `JSONCompareResult` now records each reordering. Inspect via

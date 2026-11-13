@@ -41,7 +41,7 @@ Add the JitPack repository and dependency:
 <dependency>
     <groupId>com.github.rajat-g</groupId>
     <artifactId>JSONassert</artifactId>
-    <version>v0.1.0</version> <!-- any release tag or commit SHA -->
+    <version>v0.1.2</version> <!-- any release tag or commit SHA -->
     <scope>test</scope>
 </dependency>
 ```
@@ -50,7 +50,7 @@ Gradle:
 
 ```groovy
 repositories { maven { url 'https://jitpack.io' } }
-testImplementation 'com.github.rajat-g:JSONassert:v0.1.0'
+testImplementation 'com.github.rajat-g:JSONassert:v0.1.2'
 ```
 
 ### Option 2: build locally
