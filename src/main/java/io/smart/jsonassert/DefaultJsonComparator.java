@@ -51,19 +51,16 @@ public class DefaultJsonComparator implements JsonComparator {
     }
 
     private void compareValues(Object expected, Object actual, String path, JsonCompareResult result) {
-        Optional<JsonValueComparator> detailed = Customization.findComparator(customizations, path);
-        if (detailed.isPresent()) {
-            JsonCompareResult nested = detailed.get().compare(expected, actual);
-            if (nested == null) {
-                result.addFailure(path, "Custom comparator returned null result", expected, actual);
-            } else {
-                result.append(nested, path);
-            }
-            return;
-        }
-        Optional<JsonValueMatcher> custom = Customization.findMatcher(customizations, path);
+        Optional<JsonValueCustomization> custom = Customization.findCustomization(customizations, path);
         if (custom.isPresent()) {
-            applyCustomMatcher(custom.get(), expected, actual, path, result);
+            Object decision = custom.get().compare(expected, actual);
+            if (decision instanceof JsonCompareResult nested) {
+                result.append(nested, path);
+            } else if (decision instanceof Boolean matched) {
+                applyCustomMatcher(matched, expected, actual, path, result);
+            } else {
+                result.addFailure(path, "Custom comparator returned null result", expected, actual);
+            }
             return;
         }
         if (expected instanceof JSONObject e && actual instanceof JSONObject a) {
@@ -75,9 +72,9 @@ public class DefaultJsonComparator implements JsonComparator {
         }
     }
 
-    private void applyCustomMatcher(JsonValueMatcher matcher, Object expected, Object actual,
+    private void applyCustomMatcher(boolean matched, Object expected, Object actual,
                                     String path, JsonCompareResult result) {
-        if (matcher.equal(expected, actual)) {
+        if (matched) {
             result.recordMatch(path, expected, actual);
         } else {
             result.addFailure(path, "Values differ according to custom comparator", expected, actual);

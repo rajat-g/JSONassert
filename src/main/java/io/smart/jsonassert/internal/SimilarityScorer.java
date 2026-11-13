@@ -4,7 +4,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import io.smart.jsonassert.Customization;
-import io.smart.jsonassert.JsonValueMatcher;
+import io.smart.jsonassert.JsonCompareResult;
+import io.smart.jsonassert.JsonValueCustomization;
 
 import java.util.List;
 import java.util.Optional;
@@ -32,9 +33,16 @@ public final class SimilarityScorer {
         if (expected == null || actual == null) {
             return (expected == null && actual == null) ? 1.0 : 0.0;
         }
-        Optional<JsonValueMatcher> custom = Customization.findMatcher(customizations, path);
+        Optional<JsonValueCustomization> custom = Customization.findCustomization(customizations, path);
         if (custom.isPresent()) {
-            return custom.get().equal(expected, actual) ? 1.0 : 0.0;
+            Object result = custom.get().compare(expected, actual);
+            if (result instanceof Boolean matched) {
+                return matched ? 1.0 : 0.0;
+            }
+            if (result instanceof JsonCompareResult comparison) {
+                return comparison.succeeded() ? 1.0 : 0.0;
+            }
+            return 0.0;
         }
 
         if (expected instanceof JSONObject e && actual instanceof JSONObject a) {

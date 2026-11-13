@@ -112,4 +112,22 @@ class CustomComparatorTest {
 
         assertTrue(result.succeeded(), result::toString);
     }
+
+    @Test
+    void detailedCustomizationCanUseUnorderedComparisonForOneArray() {
+        JsonComparator comparator = new CustomComparator(
+                JsonCompareMode.STRICT,
+                Customization.customization("orders", (expected, actual) ->
+                        SmartJsonAssert.compare(expected, actual, JsonCompareMode.NON_EXTENSIBLE)));
+
+        JsonCompareResult result = SmartJsonAssert.compare(
+                "{\"orders\":[{\"id\":1,\"total\":10},{\"id\":2,\"total\":20}],\"sequence\":[\"a\",\"b\"]}",
+                "{\"orders\":[{\"id\":2,\"total\":21},{\"id\":1,\"total\":10}],\"sequence\":[\"a\",\"b\"]}",
+                comparator);
+
+        assertEquals(1, result.getFailureCount());
+        assertEquals("orders[1].total", result.getFailures().get(0).getPath());
+        assertEquals(20, result.getFailures().get(0).getExpected());
+        assertEquals(21, result.getFailures().get(0).getActual());
+    }
 }

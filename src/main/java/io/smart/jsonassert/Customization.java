@@ -19,46 +19,31 @@ import java.util.Optional;
 public final class Customization {
 
     private final List<String> pattern;
-    private final JsonValueMatcher matcher;
-    private final JsonValueComparator comparator;
+    private final JsonValueCustomization customization;
 
-    private Customization(String path, JsonValueMatcher matcher) {
-        if (matcher == null) {
-            throw new IllegalArgumentException("matcher must not be null");
+    private Customization(String path, JsonValueCustomization customization) {
+        if (customization == null) {
+            throw new IllegalArgumentException("customization must not be null");
         }
         this.pattern = tokenize(path);
-        this.matcher = matcher;
-        this.comparator = null;
+        this.customization = customization;
     }
 
-    private Customization(String path, JsonValueComparator comparator) {
-        if (comparator == null) {
-            throw new IllegalArgumentException("comparator must not be null");
-        }
-        this.pattern = tokenize(path);
-        this.matcher = null;
-        this.comparator = comparator;
-    }
-
-    public static Customization customization(String path, JsonValueMatcher matcher) {
-        return new Customization(path, matcher);
-    }
-
-    /** Binds a detailed, recursive comparator to a JSON path. */
-    public static Customization customization(String path, JsonValueComparator comparator) {
-        return new Customization(path, comparator);
+    /** Binds a boolean matcher or a detailed comparator to a JSON path. */
+    public static Customization customization(String path, JsonValueCustomization customization) {
+        return new Customization(path, customization);
     }
 
     public JsonValueMatcher getMatcher() {
-        return matcher;
+        return customization instanceof JsonValueMatcher matcher ? matcher : null;
     }
 
     /** Finds the first customization whose pattern matches the given actual path. */
     public static Optional<JsonValueMatcher> findMatcher(List<Customization> customizations, String actualPath) {
         List<String> actualTokens = tokenize(actualPath);
         for (Customization c : customizations) {
-            if (c.comparator == null && matches(c.pattern, actualTokens)) {
-                return Optional.of(c.matcher);
+            if (c.customization instanceof JsonValueMatcher matcher && matches(c.pattern, actualTokens)) {
+                return Optional.of(matcher);
             }
         }
         return Optional.empty();
@@ -67,8 +52,18 @@ public final class Customization {
     static Optional<JsonValueComparator> findComparator(List<Customization> customizations, String actualPath) {
         List<String> actualTokens = tokenize(actualPath);
         for (Customization c : customizations) {
-            if (c.comparator != null && matches(c.pattern, actualTokens)) {
-                return Optional.of(c.comparator);
+            if (c.customization instanceof JsonValueComparator comparator && matches(c.pattern, actualTokens)) {
+                return Optional.of(comparator);
+            }
+        }
+        return Optional.empty();
+    }
+
+    public static Optional<JsonValueCustomization> findCustomization(List<Customization> customizations, String actualPath) {
+        List<String> actualTokens = tokenize(actualPath);
+        for (Customization c : customizations) {
+            if (matches(c.pattern, actualTokens)) {
+                return Optional.of(c.customization);
             }
         }
         return Optional.empty();
@@ -105,7 +100,6 @@ public final class Customization {
 
     @Override
     public String toString() {
-        return "Customization" + pattern + " -> "
-                + (matcher != null ? matcher.getClass().getSimpleName() : comparator.getClass().getSimpleName());
+        return "Customization" + pattern + " -> " + customization.getClass().getSimpleName();
     }
 }
