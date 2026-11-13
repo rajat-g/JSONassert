@@ -297,6 +297,28 @@ SmartJsonAssert.assertEquals(expected, actual, comparator); // works with both c
 
 Customizations here additionally support single-segment `*` wildcards (`team.members[*].role`) and custom matchers also feed the similarity matrix used during array pairing.
 
+For a path-specific comparison that should return detailed field differences, use the `JsonValueComparator` form of `Customization.customization`. For example, to compare only `orders` without strict array ordering while keeping the rest of the document strict:
+
+```java
+import io.smart.jsonassert.Customization;
+import io.smart.jsonassert.CustomComparator;
+import io.smart.jsonassert.JsonCompareMode;
+import io.smart.jsonassert.JsonComparator;
+import io.smart.jsonassert.JsonCompareResult;
+import io.smart.jsonassert.SmartJsonAssert;
+
+JsonComparator comparator = new CustomComparator(
+    JsonCompareMode.STRICT,
+    Customization.customization("orders",
+        (expected, actual) -> SmartJsonAssert.compare(
+            expected, actual, JsonCompareMode.NON_EXTENSIBLE)));
+
+JsonCompareResult result = SmartJsonAssert.compare(expectedJson, actualJson, comparator);
+System.out.println(result.getMessage());
+```
+
+The nested result is merged into the parent result with paths such as `orders[1].total`. Here the outer comparison remains strict, while only `orders` is compared with unordered array matching. Multiple customizations can be passed to the comparator.
+
 ## Runnable examples
 
 A complete tour of the library lives in [`examples/Examples.java`](examples/Examples.java) — modes, detailed results, and optimal array matching. Run it with:

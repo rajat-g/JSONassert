@@ -26,6 +26,27 @@ public final class JsonCompareResult {
         matches.addAll(other.matches);
     }
 
+    void append(JsonCompareResult other, String pathPrefix) {
+        for (FieldComparisonFailure failure : other.failures) {
+            failures.add(new FieldComparisonFailure(
+                    prefix(pathPrefix, failure.getPath()), failure.getMessage(),
+                    failure.getExpected(), failure.getActual()));
+        }
+        for (FieldMatch match : other.matches) {
+            matches.add(new FieldMatch(prefix(pathPrefix, match.path()), match.expected(), match.actual()));
+        }
+    }
+
+    private static String prefix(String prefix, String path) {
+        if (prefix.isEmpty()) {
+            return path;
+        }
+        if (path == null || path.isEmpty()) {
+            return prefix;
+        }
+        return path.startsWith("[") ? prefix + path : prefix + "." + path;
+    }
+
     /** True if the comparison found no differences. */
     public boolean succeeded() {
         return failures.isEmpty();

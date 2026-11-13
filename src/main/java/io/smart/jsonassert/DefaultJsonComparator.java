@@ -51,6 +51,16 @@ public class DefaultJsonComparator implements JsonComparator {
     }
 
     private void compareValues(Object expected, Object actual, String path, JsonCompareResult result) {
+        Optional<JsonValueComparator> detailed = Customization.findComparator(customizations, path);
+        if (detailed.isPresent()) {
+            JsonCompareResult nested = detailed.get().compare(expected, actual);
+            if (nested == null) {
+                result.addFailure(path, "Custom comparator returned null result", expected, actual);
+            } else {
+                result.append(nested, path);
+            }
+            return;
+        }
         Optional<JsonValueMatcher> custom = Customization.findMatcher(customizations, path);
         if (custom.isPresent()) {
             applyCustomMatcher(custom.get(), expected, actual, path, result);

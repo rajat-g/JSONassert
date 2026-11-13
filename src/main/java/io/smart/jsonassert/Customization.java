@@ -20,6 +20,7 @@ public final class Customization {
 
     private final List<String> pattern;
     private final JsonValueMatcher matcher;
+    private final JsonValueComparator comparator;
 
     private Customization(String path, JsonValueMatcher matcher) {
         if (matcher == null) {
@@ -27,10 +28,25 @@ public final class Customization {
         }
         this.pattern = tokenize(path);
         this.matcher = matcher;
+        this.comparator = null;
+    }
+
+    private Customization(String path, JsonValueComparator comparator) {
+        if (comparator == null) {
+            throw new IllegalArgumentException("comparator must not be null");
+        }
+        this.pattern = tokenize(path);
+        this.matcher = null;
+        this.comparator = comparator;
     }
 
     public static Customization customization(String path, JsonValueMatcher matcher) {
         return new Customization(path, matcher);
+    }
+
+    /** Binds a detailed, recursive comparator to a JSON path. */
+    public static Customization customization(String path, JsonValueComparator comparator) {
+        return new Customization(path, comparator);
     }
 
     public JsonValueMatcher getMatcher() {
@@ -41,8 +57,18 @@ public final class Customization {
     public static Optional<JsonValueMatcher> findMatcher(List<Customization> customizations, String actualPath) {
         List<String> actualTokens = tokenize(actualPath);
         for (Customization c : customizations) {
-            if (matches(c.pattern, actualTokens)) {
+            if (c.comparator == null && matches(c.pattern, actualTokens)) {
                 return Optional.of(c.matcher);
+            }
+        }
+        return Optional.empty();
+    }
+
+    static Optional<JsonValueComparator> findComparator(List<Customization> customizations, String actualPath) {
+        List<String> actualTokens = tokenize(actualPath);
+        for (Customization c : customizations) {
+            if (c.comparator != null && matches(c.pattern, actualTokens)) {
+                return Optional.of(c.comparator);
             }
         }
         return Optional.empty();
@@ -79,6 +105,7 @@ public final class Customization {
 
     @Override
     public String toString() {
-        return "Customization" + pattern + " -> " + matcher.getClass().getSimpleName();
+        return "Customization" + pattern + " -> "
+                + (matcher != null ? matcher.getClass().getSimpleName() : comparator.getClass().getSimpleName());
     }
 }
